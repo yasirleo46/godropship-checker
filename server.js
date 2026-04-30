@@ -31,15 +31,20 @@ app.post("/check-godropship", async (req, res) => {
       const html = await r.text();
 
       // simple text search (works for GoDropship pages)
-      const priceMatch = html.match(/£\s?[\d.,]+/);
-      const stockMatch = html.match(/UK Stock\s*[:：]?\s*(\d+)/i);
-      const holdMatch = html.match(/HOLD\s*[:：]?\s*(YES|NO)/i);
+      // Extract price using ID
+const priceMatch = html.match(/id="change_child_price"[^>]*>\s*£([\d.]+)/i);
 
-      let price = priceMatch ? priceMatch[0].replace("£", "").replace(",", "").trim() : "";
-      let stock = stockMatch ? Number(stockMatch[1]) : 0;
-      let hold = holdMatch ? holdMatch[1] : "";
+// Extract stock using ID
+const stockMatch = html.match(/id="change_child_inventory"[^>]*>\s*(\d+)/i);
 
-      if ((hold || "").toUpperCase() === "YES") stock = 0;
+// Extract HOLD
+const holdMatch = html.match(/HOLD\s*[:：]?\s*(YES|NO)/i);
+
+let price = priceMatch ? priceMatch[1] : "";
+let stock = stockMatch ? Number(stockMatch[1]) : 0;
+let hold = holdMatch ? holdMatch[1] : "";
+
+if ((hold || "").toUpperCase() === "YES") stock = 0;
 
       results.push({
         url,

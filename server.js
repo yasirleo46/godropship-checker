@@ -16,16 +16,21 @@ app.post("/check-godropship", async (req, res) => {
   }
 
   const browser = await puppeteer.launch({
-    headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"]
-  });
-
+  headless: true,
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu"
+  ]
+});
   const results = [];
 
   for (const url of urls) {
     try {
       const page = await browser.newPage();
-      await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
+await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
       const data = await page.evaluate(() => {
         const text = document.body.innerText;

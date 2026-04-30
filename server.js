@@ -1,5 +1,5 @@
 const express = require("express");
-const fetch = require("node-fetch"); // add this dep
+const fetch = require("node-fetch");
 
 const app = express();
 app.use(express.json());
@@ -7,6 +7,13 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("GoDropship checker is running ✅");
 });
+
+function extractBetween(html, idName) {
+  const regex = new RegExp(`id=["']${idName}["'][^>]*>([\\s\\S]*?)<\\/span>`, "i");
+  const match = html.match(regex);
+  if (!match) return "";
+  return match[1].replace(/<[^>]*>/g, "").replace(/&pound;/g, "£").trim();
+}
 
 app.post("/check-godropship", async (req, res) => {
   const { urls } = req.body;
@@ -21,30 +28,23 @@ app.post("/check-godropship", async (req, res) => {
     try {
       const r = await fetch(url, {
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
-          "Accept-Language": "en-GB,en;q=0.9",
-        },
-        timeout: 30000,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+          "Accept-Language": "en-GB,en;q=0.9"
+        }
       });
 
       const html = await r.text();
 
-      // simple text search (works for GoDropship pages)
-      // Extract price using ID
-const priceMatch = html.match(/id="change_child_price"[^>]*>\s*£([\d.]+)/i);
+      const rawPrice = extractBetween(html, "change_child_price");
+      const rawStock = extractBetween(html, "change_child_inventory");
 
-// Extract stock using ID
-const stockMatch = html.match(/id="change_child_inventory"[^>]*>\s*(\d+)/i);
+      let price = rawPrice.replace("£", "").replace(",", "").trim();
+      let stock = rawStock ? Number(rawStock.replace(/,/g, "").trim()) : 0;
 
-// Extract HOLD
-const holdMatch = html.match(/HOLD\s*[:：]?\s*(YES|NO)/i);
+      const holdMatch = html.match(/HOLD\s*[:：]?\s*(YES|NO)/i);
+      let hold = holdMatch ? holdMatch[1] : "";
 
-let price = priceMatch ? priceMatch[1] : "";
-let stock = stockMatch ? Number(stockMatch[1]) : 0;
-let hold = holdMatch ? holdMatch[1] : "";
-
-if ((hold || "").toUpperCase() === "YES") stock = 0;
+      if ((hold || "").toUpperCase() === "YES") stock = 0;
 
       results.push({
         url,
@@ -52,7 +52,10 @@ if ((hold || "").toUpperCase() === "YES") stock = 0;
         stock,
         hold,
         status: "OK",
+        debugRawPrice: rawPrice,
+        debugRawStock: rawStock
       });
+
     } catch (err) {
       results.push({
         url,
@@ -60,7 +63,7 @@ if ((hold || "").toUpperCase() === "YES") stock = 0;
         stock: "",
         hold: "",
         status: "ERROR",
-        message: err.message,
+        message: err.message
       });
     }
   }
